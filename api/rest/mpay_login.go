@@ -39,8 +39,8 @@ type MPayUser struct {
 		SdkVersion      string `json:"src_sdk_version"`
 		Udid            string `json:"src_udid"`
 	} `json:"pc_ext_info"`
-	RealnameStatus       int    `json:"realname_status"`
-	RealnameVerifyStatus int    `json:"realname_verify_status"`
+	RealNameStatus       int    `json:"realname_status"`
+	RealNameVerifyStatus int    `json:"realname_verify_status"`
 	Token                string `json:"token"`
 }
 
@@ -105,7 +105,7 @@ func MPayLogin(client *http.Client, device MPayDevice, appMPay MPayAppInfo, clie
 	}{
 		Username: username,
 		Password: fmt.Sprintf("%x", md5.Sum([]byte(password))),
-		UniqueId: clientMPay.UniqueId, // is this right?
+		UniqueId: clientMPay.UniqueId,
 	})
 	if err != nil {
 		return err
@@ -121,7 +121,67 @@ func MPayLogin(client *http.Client, device MPayDevice, appMPay MPayAppInfo, clie
 	postBody.Add("params", params)
 	postBody.Add("app_channel", "netease")
 
-	req, err := http.NewRequest("POST", "https://service.mkey.163.com/mpay/games/aecfrxodyqaaaajp-g-x19/devices/"+device.Id+"/users", bytes.NewBuffer([]byte(postBody.Encode())))
+	req, err := http.NewRequest("POST", "https://service.mkey.163.com/mpay/"+appMPay.AppType+"/"+appMPay.GameId+"/devices/"+device.Id+"/users", bytes.NewBuffer([]byte(postBody.Encode())))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	err = mPayErrorHandle(resp.StatusCode, body)
+	if err != nil {
+		return err
+	}
+
+	var query map[string]MPayUser
+
+	err = json.Unmarshal(body, &query)
+	if err != nil {
+		return err
+	}
+
+	if val, ok := query["user"]; ok {
+		*user = val
+		return nil
+	}
+
+	return errors.New("no device info found in response")
+}
+
+// this will only works in games that support guest login
+func MPayLoginGuest(client *http.Client, device MPayDevice, appMPay MPayAppInfo, clientMPay MPayClientInfo, user *MPayUser) error {
+	postBody := url.Values{}
+
+	unencrypted, err := json.Marshal(struct {
+		Udid string `json:"udid"`
+	}{
+		Udid: clientMPay.Udid,
+	})
+	if err != nil {
+		return err
+	}
+
+	params, err := mPayEncryptToParams(unencrypted, device)
+	if err != nil {
+		return err
+	}
+
+	util.PushToParameters(appMPay, &postBody)
+	postBody.Add("params", params)
+	postBody.Add("app_channel", "netease")
+
+	req, err := http.NewRequest("POST", "https://service.mkey.163.com/mpay/"+appMPay.AppType+"/"+appMPay.GameId+"/devices/"+device.Id+"/users/by_guest", bytes.NewBuffer([]byte(postBody.Encode())))
 	if err != nil {
 		return err
 	}
