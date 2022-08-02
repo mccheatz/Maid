@@ -13,6 +13,10 @@ func main() {
 
 	client := http.Client{}
 
+	// var info rest.BoxBasicInformation
+	// rest.InitBox(&client, &info)
+	// println(info.EncodeUrl)
+
 	session, err := api.EstablishSession(&client)
 	if err != nil {
 		panic(err)
@@ -33,10 +37,17 @@ func main() {
 	}
 
 	var user rest.MPayUser
-	err = rest.MPayLogin(&client, device, app, c, "", "", &user)
+	err = rest.MPayLogin(&client, device, app, c, "f1182916778@163.com", "02061101", &user)
 	if err != nil {
 		panic(err)
 	}
 
-	println(user.Token)
+	// var otpEntity rest.X19OTPEntity
+	// err = rest.LoginOTP(&client, user.ConvertToSAuth("x19", c, device), session.UserAgent, session.Release.CoreServerUrl, &otpEntity)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// println(user.Token)
+	// println(otpEntity.Entity.OTPToken)
 }

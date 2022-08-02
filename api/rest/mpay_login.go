@@ -11,6 +11,9 @@ import (
 	"maid/util"
 	"net/http"
 	"net/url"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
 type MPayUser struct {
@@ -41,21 +44,45 @@ type MPayUser struct {
 	Token                string `json:"token"`
 }
 
-func mPayLoginParams(username string, password string, device MPayDevice, client MPayClientInfo) (string, error) {
-	err := device.ClaimBinaryKey()
-	if err != nil {
-		return "", err
-	}
+type MPaySAuthToken struct {
+	GameId         string `json:"gameid"`
+	LoginChannel   string `json:"login_channel"`
+	AppChannel     string `json:"app_channel"`
+	Platform       string `json:"platform"`
+	SdkUid         string `json:"sdkuid"`
+	SessionId      string `json:"sessionid"`
+	SdkVersion     string `json:"sdk_version"`
+	Udid           string `json:"udid"`
+	DeviceId       string `json:"deviceid"`
+	AimInfo        string `json:"aim_info"`
+	ClientLoginSn  string `json:"client_login_sn"`
+	GasToken       string `json:"gas_token"`
+	SourcePlatform string `json:"source_platform"`
+	Ip             string `json:"ip"`
+}
 
-	unencrypted, err := json.Marshal(struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		UniqueId string `json:"unique_id"`
-	}{
-		Username: username,
-		Password: fmt.Sprintf("%x", md5.Sum([]byte(password))),
-		UniqueId: client.UniqueId, // is this right?
-	})
+func (mp *MPayUser) ConvertToSAuth(id string, client MPayClientInfo, device MPayDevice) MPaySAuthToken {
+	sa := MPaySAuthToken{}
+	sa.GameId = id
+	sa.LoginChannel = "netease"
+	sa.AppChannel = "netease"
+	sa.Platform = "pc"
+	sa.SdkUid = mp.Id
+	sa.SessionId = mp.Token
+	sa.SdkVersion = "3.4.0"
+	sa.Udid = client.Udid
+	sa.DeviceId = device.Id
+	sa.AimInfo = "{\"aim\":\"" + mp.PcExtInfo.ClientIp + "\",\"country\":\"CN\",\"tz\":\"+0800\",\"tzid\":\"\"}"
+	sa.ClientLoginSn = strings.ToUpper(strings.ReplaceAll(uuid.NewString(), "-", ""))
+	sa.GasToken = ""
+	sa.SourcePlatform = "pc"
+	sa.Ip = mp.PcExtInfo.ClientIp
+
+	return sa
+}
+
+func mPayEncryptToParams(unencrypted []byte, device MPayDevice) (string, error) {
+	err := device.ClaimBinaryKey()
 	if err != nil {
 		return "", err
 	}
@@ -71,7 +98,20 @@ func mPayLoginParams(username string, password string, device MPayDevice, client
 func MPayLogin(client *http.Client, device MPayDevice, appMPay MPayAppInfo, clientMPay MPayClientInfo, username string, password string, user *MPayUser) error {
 	postBody := url.Values{}
 
-	params, err := mPayLoginParams(username, password, device, clientMPay)
+	unencrypted, err := json.Marshal(struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		UniqueId string `json:"unique_id"`
+	}{
+		Username: username,
+		Password: fmt.Sprintf("%x", md5.Sum([]byte(password))),
+		UniqueId: clientMPay.UniqueId, // is this right?
+	})
+	if err != nil {
+		return err
+	}
+
+	params, err := mPayEncryptToParams(unencrypted, device)
 	if err != nil {
 		return err
 	}
@@ -86,6 +126,8 @@ func MPayLogin(client *http.Client, device MPayDevice, appMPay MPayAppInfo, clie
 		return err
 	}
 
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -93,6 +135,11 @@ func MPayLogin(client *http.Client, device MPayDevice, appMPay MPayAppInfo, clie
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	err = mPayErrorHandle(resp.StatusCode, body)
 	if err != nil {
 		return err
 	}

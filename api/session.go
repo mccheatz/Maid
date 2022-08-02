@@ -8,14 +8,15 @@ import (
 	"strings"
 )
 
-type NeteaseSession struct {
+type X19Session struct {
 	PatchList   []rest.NeteasePatch
 	Release     rest.NeteaseReleaseInfo
 	AuthServers []rest.NeteaseAuthServer
 	LatestPatch string
+	UserAgent   string
 }
 
-func (s *NeteaseSession) CheckSessionAbility() error {
+func (s *X19Session) CheckSessionAbility() error {
 	if s.Release.ServerStop == "1" || s.Release.TempServerStop == 1 {
 		return errors.New("game server under maintenance")
 	}
@@ -27,7 +28,7 @@ func (s *NeteaseSession) CheckSessionAbility() error {
 	return nil
 }
 
-func (s *NeteaseSession) UpdateLatestPatch() {
+func (s *X19Session) UpdateLatestPatch() {
 	ver := -1
 	latest := s.PatchList[0]
 
@@ -50,10 +51,11 @@ func (s *NeteaseSession) UpdateLatestPatch() {
 	}
 
 	s.LatestPatch = latest.Name
+	s.UserAgent = "WPFLauncher/" + s.LatestPatch
 }
 
-func EstablishSession(client *http.Client) (NeteaseSession, error) {
-	session := NeteaseSession{}
+func EstablishSession(client *http.Client) (X19Session, error) {
+	session := X19Session{}
 
 	err := rest.PatchList(client, &session.PatchList)
 	if err != nil {

@@ -74,6 +74,28 @@ func (mp *MPayAppInfo) GenerateForX19(version string) {
 	mp.UpdaterVersion = "c1.0.0"
 }
 
+type MPayError struct {
+	Reason string `json:"reason"`
+	Code   int    `json:"code"`
+}
+
+func (e MPayError) Error() string {
+	return e.Reason + "(code=" + strconv.Itoa(e.Code) + ")"
+}
+
+func mPayErrorHandle(statusCode int, body []byte) error {
+	if statusCode/200 == 2 {
+		var errReason MPayError
+		err := json.Unmarshal(body, &errReason)
+		if err != nil {
+			return err
+		}
+		return errReason
+	}
+
+	return nil
+}
+
 type MPayDevice struct {
 	Id        string `json:"id"`
 	Key       string `json:"key"`
@@ -99,6 +121,8 @@ func MPayDevices(client *http.Client, clientMPay MPayClientInfo, appMPay MPayApp
 		return err
 	}
 
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -106,6 +130,11 @@ func MPayDevices(client *http.Client, clientMPay MPayClientInfo, appMPay MPayApp
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	err = mPayErrorHandle(resp.StatusCode, body)
 	if err != nil {
 		return err
 	}
