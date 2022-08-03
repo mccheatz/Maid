@@ -27,7 +27,7 @@ func main() {
 	}
 
 	c := rest.MPayClientInfo{}
-	c.GenerateMobile()
+	c.GeneratePC()
 	app := rest.MPayAppInfo{}
 	// app.GenerateForX19(session.LatestPatch)
 	app.GenerateForX19Mobile("840204111")
@@ -38,20 +38,20 @@ func main() {
 	}
 
 	var user rest.MPayUser
-	// err = rest.MPayLogin(&client, device, app, c, "f1182916778@163.com", "020601", &user)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	err = rest.MPayLoginGuest(&client, device, app, c, &user)
+	err = rest.MPayLogin(&client, device, app, c, "f1182916778@163.com", "020601", &user)
 	if err != nil {
 		panic(err)
 	}
 
+	// err = rest.MPayLoginGuest(&client, device, app, c, &user)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
 	if user.RealNameStatus == 0 { // not real-name verified
 		println("attempt real-name verify...")
 		var result rest.MPayRealNameResult
-		err = rest.MPayRealNameUpdate(&client, device, app, c, user, "姓名", "86", "362321195502064333", &result)
+		err = rest.MPayRealNameUpdate(&client, device, app, user, "姓名", "86", "362321195502064333", &result)
 		if err != nil {
 			panic(err)
 		}

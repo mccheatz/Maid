@@ -14,7 +14,7 @@ type MPayRealNameResult struct {
 	RealNameType string `json:"realname_type"`
 }
 
-func mPayRealNameBase(client *http.Client, device MPayDevice, appMPay MPayAppInfo, clientMPay MPayClientInfo, user MPayUser, realname string, idRegion string, idNum string, result *MPayRealNameResult, subApi string) error {
+func mPayRealNameBase(client *http.Client, device MPayDevice, appMPay MPayAppInfo, user MPayUser, realname string, idRegion string, idNum string, result *MPayRealNameResult, subApi string) error {
 	postBody := url.Values{}
 
 	util.PushToParameters(appMPay, &postBody)
@@ -56,10 +56,10 @@ func mPayRealNameBase(client *http.Client, device MPayDevice, appMPay MPayAppInf
 }
 
 // This only upload the realname information to the server and verify is the information able to use or not.
-func MPayRealNameVerify(client *http.Client, device MPayDevice, appMPay MPayAppInfo, clientMPay MPayClientInfo, user MPayUser, realname string, idRegion string, idNum string, result *MPayRealNameResult) error {
-	return mPayRealNameBase(client, device, appMPay, clientMPay, user, realname, idRegion, idNum, result, "verify")
+func MPayRealNameVerify(client *http.Client, device MPayDevice, appMPay MPayAppInfo, user MPayUser, realname string, idRegion string, idNum string, result *MPayRealNameResult) error {
+	return mPayRealNameBase(client, device, appMPay, user, realname, idRegion, idNum, result, "verify")
 }
 
-func MPayRealNameUpdate(client *http.Client, device MPayDevice, appMPay MPayAppInfo, clientMPay MPayClientInfo, user MPayUser, realname string, idRegion string, idNum string, result *MPayRealNameResult) error {
-	return mPayRealNameBase(client, device, appMPay, clientMPay, user, realname, idRegion, idNum, result, "update_by_token")
+func MPayRealNameUpdate(client *http.Client, device MPayDevice, appMPay MPayAppInfo, user MPayUser, realname string, idRegion string, idNum string, result *MPayRealNameResult) error {
+	return mPayRealNameBase(client, device, appMPay, user, realname, idRegion, idNum, result, "update_by_token")
 }
