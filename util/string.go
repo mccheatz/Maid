@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 
 func RandStringRunes(n int, runes_optional ...[]rune) string {
 	var runes = letterRunes

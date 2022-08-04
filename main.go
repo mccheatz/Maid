@@ -38,7 +38,7 @@ func main() {
 	}
 
 	var user rest.MPayUser
-	err = rest.MPayLogin(&client, device, app, c, "f1182916778@163.com", "020601", &user)
+	err = rest.MPayLogin(&client, device, app, c, "xxxx@163.com", "p4ssw0rd", &user)
 	if err != nil {
 		panic(err)
 	}
