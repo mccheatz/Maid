@@ -86,7 +86,7 @@ func mPayEncryptToParams(unencrypted []byte, device MPayDevice) (string, error) 
 		return "", err
 	}
 
-	encrypted, err := util.AesPkcs7Encrypt(device.BinaryKey, unencrypted)
+	encrypted, err := util.AES_ECB_PKCS7Encrypt(device.BinaryKey, unencrypted)
 	if err != nil {
 		return "", err
 	}

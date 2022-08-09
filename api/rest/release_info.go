@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-type NeteaseReleaseInfo struct {
+type X19ReleaseInfo struct {
 	HostNum                    int
 	ServerHostNum              int
 	TempServerStop             int
@@ -45,7 +45,7 @@ type NeteaseReleaseInfo struct {
 	PlatformUrl                string
 }
 
-func GameReleaseInfo(client *http.Client, release *NeteaseReleaseInfo) error {
+func X19ReleaseInfoFetch(client *http.Client, release *X19ReleaseInfo) error {
 	req, err := http.NewRequest("GET", "https://x19.update.netease.com/serverlist/release.json", nil)
 	if err != nil {
 		return err

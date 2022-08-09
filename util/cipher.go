@@ -45,10 +45,10 @@ func PKCS7UnPadding(src []byte) []byte {
 	return src[:(length - unpadding)]
 }
 
-func AesPkcs7Encrypt(key []byte, src []byte) ([]byte, error) {
+func AES_ECB_PKCS7Encrypt(key []byte, src []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return make([]byte, 0), err
+		return nil, err
 	}
 
 	src = PKCS7Padding(src, block.BlockSize())
@@ -56,18 +56,44 @@ func AesPkcs7Encrypt(key []byte, src []byte) ([]byte, error) {
 	return ECBEncrypt(block, src, key)
 }
 
-func AesPkcs7Decrypt(key []byte, dst []byte) ([]byte, error) {
+func AES_ECB_PKCS7Decrypt(key []byte, dst []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return make([]byte, 0), err
+		return nil, err
 	}
 
 	src, err := ECBDecrypt(block, dst, key)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	src = PKCS7UnPadding(src)
 
 	return src, nil
+}
+
+func AES_CBC_Encrypt(key []byte, data []byte, iv []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	encrypted := make([]byte, len(data))
+	cbcEncrypter := cipher.NewCBCEncrypter(block, iv)
+	cbcEncrypter.CryptBlocks(encrypted, data)
+
+	return encrypted, nil
+}
+
+func AES_CBC_Decrypt(key []byte, data []byte, iv []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	decrypted := make([]byte, len(data))
+	cbcDecrypter := cipher.NewCBCDecrypter(block, iv)
+	cbcDecrypter.CryptBlocks(decrypted, data)
+
+	return decrypted, nil
 }

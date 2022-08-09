@@ -6,13 +6,13 @@ import (
 	"net/http"
 )
 
-type NeteaseAuthServer struct {
+type X19AuthServer struct {
 	IP         string
 	Post       int
 	ServerType string
 }
 
-func AuthServerList(client *http.Client, release NeteaseReleaseInfo, authServers *[]NeteaseAuthServer) error {
+func X19AuthServerList(client *http.Client, release X19ReleaseInfo, authServers *[]X19AuthServer) error {
 	req, err := http.NewRequest("GET", release.AuthServerUrl, nil)
 	if err != nil {
 		return err

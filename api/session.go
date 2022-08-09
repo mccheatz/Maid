@@ -9,10 +9,10 @@ import (
 )
 
 type X19Session struct {
-	PatchList   []rest.NeteasePatch
-	Release     rest.NeteaseReleaseInfo
-	AuthServers []rest.NeteaseAuthServer
-	LatestPatch string
+	PatchList   []rest.X19Patch
+	Release     rest.X19ReleaseInfo
+	AuthServers []rest.X19AuthServer
+	LatestPatch rest.X19Version
 	UserAgent   string
 }
 
@@ -50,24 +50,26 @@ func (s *X19Session) UpdateLatestPatch() {
 		}
 	}
 
-	s.LatestPatch = latest.Name
-	s.UserAgent = "WPFLauncher/" + s.LatestPatch
+	s.LatestPatch = rest.X19Version{
+		Version: latest.Name,
+	}
+	s.UserAgent = "WPFLauncher/" + s.LatestPatch.Version
 }
 
 func EstablishSession(client *http.Client) (X19Session, error) {
 	session := X19Session{}
 
-	err := rest.PatchList(client, &session.PatchList)
+	err := rest.X19PatchList(client, &session.PatchList)
 	if err != nil {
 		return session, err
 	}
 
-	err = rest.GameReleaseInfo(client, &session.Release)
+	err = rest.X19ReleaseInfoFetch(client, &session.Release)
 	if err != nil {
 		return session, err
 	}
 
-	err = rest.AuthServerList(client, session.Release, &session.AuthServers)
+	err = rest.X19AuthServerList(client, session.Release, &session.AuthServers)
 	if err != nil {
 		return session, err
 	}

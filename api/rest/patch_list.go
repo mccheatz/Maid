@@ -7,14 +7,20 @@ import (
 	"strings"
 )
 
-type NeteasePatch struct {
+type X19Patch struct {
 	Name string
 	Size int    `json:"size"`
 	Url  string `json:"url"`
 	Md5  string `json:"md5"`
 }
 
-func PatchList(client *http.Client, patchList *[]NeteasePatch) error {
+type X19Version struct {
+	Version     string `json:"version"`
+	LauncherMD5 string `json:"launcher_md5"`
+	UpdaterMD5  string `json:"updater_md5"`
+}
+
+func X19PatchList(client *http.Client, patchList *[]X19Patch) error {
 	req, err := http.NewRequest("GET", "https://x19.update.netease.com/pl/x19_java_patchlist", nil)
 	if err != nil {
 		return err
@@ -35,7 +41,7 @@ func PatchList(client *http.Client, patchList *[]NeteasePatch) error {
 
 	body = []byte("{" + strings.TrimSuffix(strings.TrimSpace(string(body)), ",") + "}")
 
-	var patches map[string]NeteasePatch
+	var patches map[string]X19Patch
 
 	err = json.Unmarshal(body, &patches)
 	if err != nil {
@@ -43,7 +49,7 @@ func PatchList(client *http.Client, patchList *[]NeteasePatch) error {
 	}
 
 	// merge key into value
-	*patchList = make([]NeteasePatch, 0)
+	*patchList = make([]X19Patch, 0)
 	for version, patch := range patches {
 		patch.Name = version
 
