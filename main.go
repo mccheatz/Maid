@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/base64"
 	"maid/api"
 	"maid/api/rest"
-	"maid/util"
 	"math/rand"
 	"net/http"
 	"time"
@@ -12,11 +10,6 @@ import (
 
 func main() {
 	rand.Seed(time.Now().UnixMilli()) // reset random seed
-
-	b, _ := util.X19HttpEncrypt([]byte("c!pher_test-0123"))
-	println(base64.StdEncoding.EncodeToString(b))
-
-	return
 
 	client := http.Client{}
 
@@ -35,6 +28,7 @@ func main() {
 
 	c := rest.MPayClientInfo{}
 	c.GeneratePC()
+	c.Udid = "o0Oooo0oO"
 	app := rest.MPayAppInfo{}
 	// app.GenerateForX19(session.LatestPatch)
 	app.GenerateForX19Mobile("840204111")
@@ -45,8 +39,8 @@ func main() {
 	}
 
 	var user rest.MPayUser
-	err = rest.MPayLogin(&client, device, app, c, "f1182916778@163.com", "020601", &user)
-	// err = rest.MPayLoginGuest(&client, device, app, c, &user)
+	// err = rest.MPayLogin(&client, device, app, c, "f1182916778@163.com", "020601", &user)
+	err = rest.MPayLoginGuest(&client, device, app, c, &user)
 	if err != nil {
 		panic(err)
 	}
@@ -69,13 +63,16 @@ func main() {
 	sAuth := user.ConvertToSAuth("x19", c, device)
 
 	var otpEntity rest.X19OTPEntity
-	err = rest.LoginOTP(&client, sAuth, session.UserAgent, session.Release, &otpEntity)
+	err = rest.X19LoginOTP(&client, sAuth, session.UserAgent, session.Release, &otpEntity)
 	if err != nil {
 		panic(err)
 	}
 
-	err = rest.GenerateAuthenticationOTPBody(&client, session.UserAgent, sAuth, c, session.Release, session.LatestPatch, otpEntity)
+	var authEntity rest.X19AuthenticationEntity
+	err = rest.X19AuthenticationOTP(&client, session.UserAgent, sAuth, c, session.Release, session.LatestPatch, otpEntity, &authEntity)
 	if err != nil {
 		panic(err)
 	}
+
+	println("X19 AuthToken: " + authEntity.Entity.Token)
 }

@@ -6,7 +6,7 @@ import (
 	"math/rand"
 )
 
-func X19PickKey(query int) []byte {
+func X19PickKey(query byte) []byte {
 	keys := []string{
 		"MK6mipwmOUedplb6",
 		"OtEylfId6dyhrfdn",
@@ -36,7 +36,7 @@ func X19HttpEncrypt(bodyIn []byte) ([]byte, error) {
 		body[i+len(bodyIn)] = randFill[i]
 	}
 
-	keyQuery := rand.Intn(0xff)
+	keyQuery := byte(rand.Intn(15))<<4 | 2
 	initVector := []byte(RandStringRunes(0x10))
 	encrypted, err := AES_CBC_Encrypt(X19PickKey(keyQuery), body, initVector)
 	if err != nil {
@@ -51,7 +51,7 @@ func X19HttpEncrypt(bodyIn []byte) ([]byte, error) {
 		result[i+16] = encrypted[i]
 	}
 
-	result[len(result)-1] = byte(keyQuery)
+	result[len(result)-1] = keyQuery
 
 	return result, nil
 }
@@ -61,19 +61,19 @@ func X19HttpDecrypt(body []byte) ([]byte, error) {
 		return nil, errors.New("input body too short")
 	}
 
-	q := int(body[len(body)-1])
-
-	result, err := AES_CBC_Decrypt(X19PickKey(q), body[16:len(body)-1], body[:16])
+	result, err := AES_CBC_Decrypt(X19PickKey(body[len(body)-1]), body[16:len(body)-1], body[:16])
 	if err != nil {
 		return nil, err
 	}
 
 	scissor := 0
-	for i := len(result) - 16; i < len(result); i++ {
-		if result[i] == 0x00 {
+	scissorPos := len(result) - 1
+	for scissor < 16 {
+		if result[scissorPos] != 0x00 {
 			scissor++
 		}
+		scissorPos--
 	}
 
-	return result[:len(result)-16-scissor], nil
+	return result[:scissorPos+1], nil
 }
