@@ -15,3 +15,11 @@ func PushToParameters(instance any, query *url.Values) {
 		}
 	}
 }
+
+func BoolToInt(in bool) int {
+	var result int // default 0
+	if in {
+		result = 1
+	}
+	return result
+}

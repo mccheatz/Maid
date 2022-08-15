@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/md5"
 )
 
 func ECBEncrypt(block cipher.Block, src, key []byte) ([]byte, error) {
@@ -96,4 +97,9 @@ func AES_CBC_Decrypt(key []byte, data []byte, iv []byte) ([]byte, error) {
 	cbcDecrypter.CryptBlocks(decrypted, data)
 
 	return decrypted, nil
+}
+
+func MD5Sum(data []byte) []byte {
+	result := md5.Sum(data)
+	return result[:]
 }

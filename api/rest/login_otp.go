@@ -1,10 +1,8 @@
 package rest
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"maid/util"
 	"math/rand"
 	"net/http"
@@ -40,21 +38,7 @@ func X19LoginOTP(client *http.Client, sAuth MPaySAuthToken, userAgent string, re
 		return err
 	}
 
-	req, err := http.NewRequest("POST", release.CoreServerUrl+"/login-otp", bytes.NewBuffer(sAuthJson))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Content-Type", "application/json; charset=utf-8")
-	req.Header.Add("User-Agent", userAgent)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
+	body, err := util.X19SimpleRequest("POST", release.CoreServerUrl+"/login-otp", sAuthJson, client, userAgent, nil)
 	if err != nil {
 		return err
 	}
@@ -87,7 +71,14 @@ type X19AuthenticationEntity struct {
 	} `json:"entity"`
 }
 
-func X19AuthenticationOTP(client *http.Client, userAgent string, sAuth MPaySAuthToken, clientMpay MPayClientInfo, release X19ReleaseInfo, version X19Version, otpEntity X19OTPEntity, authEntity *X19AuthenticationEntity) error {
+func (auth X19AuthenticationEntity) ToUser() util.X19User {
+	return util.X19User{
+		Id:    auth.Entity.EntityId,
+		Token: auth.Entity.Token,
+	}
+}
+
+func X19AuthenticationOTP(client *http.Client, userAgent string, sAuth MPaySAuthToken, clientMPay MPayClientInfo, release X19ReleaseInfo, version X19Version, otpEntity X19OTPEntity, authEntity *X19AuthenticationEntity) error {
 	sAuthJson, err := json.Marshal(sAuth)
 	if err != nil {
 		return err
@@ -111,8 +102,8 @@ func X19AuthenticationOTP(client *http.Client, userAgent string, sAuth MPaySAuth
 	}{
 		OsName:       "windows",
 		OsVersion:    "Microsoft Windows 10",
-		MacAddress:   clientMpay.MacAddress,
-		Udid:         clientMpay.Udid,
+		MacAddress:   clientMPay.MacAddress,
+		Udid:         clientMPay.Udid,
 		AppVersion:   "0.0.0.0",
 		Disk:         fmt.Sprintf("%02x%02x%02x%02x", rand.Intn(0xff), rand.Intn(0xff), rand.Intn(0xff), rand.Intn(0xff)),
 		Is64Bit:      "1",
@@ -164,21 +155,7 @@ func X19AuthenticationOTP(client *http.Client, userAgent string, sAuth MPaySAuth
 		return err
 	}
 
-	req, err := http.NewRequest("POST", release.CoreServerUrl+"/authentication-otp", bytes.NewBuffer(postBody))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Content-Type", "application/json; charset=utf-8")
-	req.Header.Add("User-Agent", userAgent)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
+	body, err := util.X19SimpleRequest("POST", release.CoreServerUrl+"/authentication-otp", postBody, client, userAgent, nil)
 	if err != nil {
 		return err
 	}

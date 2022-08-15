@@ -3,6 +3,7 @@ package main
 import (
 	"maid/api"
 	"maid/api/rest"
+	"maid/util"
 	"math/rand"
 	"net/http"
 	"time"
@@ -10,6 +11,12 @@ import (
 
 func main() {
 	rand.Seed(time.Now().UnixMilli()) // reset random seed
+
+	a := util.ComputeDynamicToken("/user-detail/89602", []byte(""), "y9LkDerv903ECe6M")
+	// KCwsLf7vumxgajZ31
+	println(a)
+
+	return
 
 	client := http.Client{}
 
@@ -26,21 +33,21 @@ func main() {
 		panic(err)
 	}
 
-	c := rest.MPayClientInfo{}
-	c.GeneratePC()
-	c.Udid = "o0Oooo0oO"
+	clientMPay := rest.MPayClientInfo{}
+	clientMPay.GeneratePC()
+	clientMPay.Udid = "o0Oooo0oO"
 	app := rest.MPayAppInfo{}
 	// app.GenerateForX19(session.LatestPatch)
 	app.GenerateForX19Mobile("840204111")
 	var device rest.MPayDevice
-	err = rest.MPayDevices(&client, c, app, &device)
+	err = rest.MPayDevices(&client, clientMPay, app, &device)
 	if err != nil {
 		panic(err)
 	}
 
 	var user rest.MPayUser
 	// err = rest.MPayLogin(&client, device, app, c, "f1182916778@163.com", "020601", &user)
-	err = rest.MPayLoginGuest(&client, device, app, c, &user)
+	err = rest.MPayLoginGuest(&client, device, app, clientMPay, &user)
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +67,7 @@ func main() {
 		}
 	}
 
-	sAuth := user.ConvertToSAuth("x19", c, device)
+	sAuth := user.ConvertToSAuth("x19", clientMPay, device)
 
 	var otpEntity rest.X19OTPEntity
 	err = rest.X19LoginOTP(&client, sAuth, session.UserAgent, session.Release, &otpEntity)
@@ -69,10 +76,12 @@ func main() {
 	}
 
 	var authEntity rest.X19AuthenticationEntity
-	err = rest.X19AuthenticationOTP(&client, session.UserAgent, sAuth, c, session.Release, session.LatestPatch, otpEntity, &authEntity)
+	err = rest.X19AuthenticationOTP(&client, session.UserAgent, sAuth, clientMPay, session.Release, session.LatestPatch, otpEntity, &authEntity)
 	if err != nil {
 		panic(err)
 	}
+
+	// user := authEntity.ToUser()
 
 	println("X19 AuthToken: " + authEntity.Entity.Token)
 }

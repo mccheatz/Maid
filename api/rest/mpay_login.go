@@ -2,10 +2,9 @@ package rest
 
 import (
 	"bytes"
-	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"maid/util"
 	"net/http"
@@ -91,7 +90,7 @@ func mPayEncryptToParams(unencrypted []byte, device MPayDevice) (string, error) 
 		return "", err
 	}
 
-	return util.ToHexString(encrypted), nil
+	return hex.EncodeToString(encrypted), nil
 }
 
 func mPayLoginBase(client *http.Client, appMPay MPayAppInfo, params string, postUrl string, user *MPayUser) error {
@@ -146,7 +145,7 @@ func MPayLogin(client *http.Client, device MPayDevice, appMPay MPayAppInfo, clie
 		UniqueId string `json:"unique_id"`
 	}{
 		Username: username,
-		Password: fmt.Sprintf("%x", md5.Sum([]byte(password))),
+		Password: hex.EncodeToString(util.MD5Sum([]byte(password))),
 		UniqueId: clientMPay.UniqueId,
 	})
 	if err != nil {
