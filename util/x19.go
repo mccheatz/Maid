@@ -2,11 +2,8 @@ package util
 
 import (
 	"bytes"
-	"crypto/md5"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"math"
 	"math/rand"
@@ -92,142 +89,91 @@ func X19HttpDecrypt(body []byte) ([]byte, error) {
 	return result[:scissorPos+1], nil
 }
 
-type test1 struct {
-	a int
-	b int
-	f [0xf]byte
-}
-
-func (a *test1) c(b byte) {
-	a.a = 0
-	a.b = 0xf
-
-	uVar3 := 8
-	uVar4 := 0x100
-	for uVar3 != 0 {
-		uVar3 = uVar3 - 1
-		uVar4 = uVar4>>1 | BoolToInt((uVar4&1) != 0)<<0x1f
-		if b&byte(uVar4) == 0 {
-			a.d(0x30)
-		} else {
-			a.d(0x31)
-		}
-	}
-}
-
-func (a *test1) d(b byte) {
-	c := a.a
-	d := a.b
-	if c < d {
-		a.a = c + 1
-		a.f[c] = b
-		// println(a.a)
-		// println(a.b - a.a)
-		a.f[c+1] = 0
-		return
-	}
-
-	panic(errors.New("=w="))
-}
-
-func X19SpecialMD5(body []byte) []byte {
-	sum := md5.Sum(body)
-	for i := 0; i < len(sum); i++ {
-		b := sum[i]
-		if b >= 'A' && b <= 'Z' {
-			sum[i] += 'a' - 'A'
-		}
-	}
-
-	return sum[:]
-}
-
 func ComputeDynamicToken(path string, body []byte, token string) string {
-	tokenMd5 := X19SpecialMD5([]byte(token))
-	tokenMd5 = append(tokenMd5, body...)
-	tokenMd5 = append(tokenMd5, []byte("0eGsBkhl")...)
-	tokenMd5 = append(tokenMd5, []byte(path)...)
+	var payload bytes.Buffer
+	payload.WriteString(MD5Hex([]byte(token)))
+	payload.Write(body)
+	payload.WriteString("0eGsBkhl")
+	payload.WriteString(path)
 
-	mergedMd5 := X19SpecialMD5(tokenMd5)
+	sum := []byte(MD5Hex(payload.Bytes()))
 
-	b, _ := base64.StdEncoding.DecodeString("o7m7mu49ro9prqor1")
-
-	for i := 0; i < len(mergedMd5); i++ {
-		if i < len(b) {
-			fmt.Printf("%x", mergedMd5[i]^b[i])
-		} else {
-			print("-")
-		}
-		print("\t")
-		fmt.Printf("%x\n", mergedMd5[i])
-	}
-
-	return ""
-
-	local_b8 := make([]byte, 0)
-
-	for i := 0; i < len(mergedMd5); i++ {
-		a := test1{}
-		a.c(mergedMd5[i])
-		for j := 0; j < a.a; j++ {
-			local_b8 = append(local_b8, a.f[j])
+	// convert the hex string to binary string by runes
+	var binaryBuffer bytes.Buffer
+	for _, by := range sum {
+		a := 8
+		b := 0x100
+		for a != 0 {
+			a--
+			b = b >> 1
+			if b&int(by) == 0 {
+				binaryBuffer.WriteRune('0')
+			} else {
+				binaryBuffer.WriteRune('1')
+			}
 		}
 	}
 
-	// for i := 0; i < len(local_b8); i++ {
-	// 	println(local_b8[i])
-	// }
+	// rotate the binary string
+	r1 := binaryBuffer.String()
+	binaryString := r1[6:] + r1[:6]
 
-	processedPayload := make([]byte, len(local_b8))
-	for i := 0; i < len(local_b8)-6; i++ {
-		processedPayload[i] = local_b8[6+i]
-	}
-	for i := 0; i < 6; i++ {
-		processedPayload[len(local_b8)-6+i] = local_b8[i]
-	}
-	for i := 0; i < len(mergedMd5); i++ {
-		processedPayload[i] = processedPayload[i] ^ mergedMd5[i]
+	// convert the binary string back and xor with the hex string
+	for i := 0; i < len(sum); i++ {
+		section := binaryString[i*8 : i*8+8]
+		uVar14 := len(section)
+		uVar9 := 0
+		var by byte
+		for uVar9 < len(section) {
+			if section[uVar14-1] == '1' {
+				by = by | 1<<(uVar9&0x1f)
+			}
+			uVar9++
+			uVar14--
+		}
+		sum[i] = byte(by) ^ sum[i]
 	}
 
-	println(hex.EncodeToString(mergedMd5))
-	println(hex.EncodeToString(processedPayload))
-
-	b64Encoded := base64.RawStdEncoding.EncodeToString(processedPayload)
+	// encode the xor-ed hex string to base64 and only take first 16 bytes
+	b64Encoded := base64.RawStdEncoding.EncodeToString(sum)
 	resultReplacer := strings.NewReplacer("+", "m", "/", "o")
 	result := resultReplacer.Replace(b64Encoded[:16] + "1")
 
 	return result
 }
 
-func BuildX19Request(method string, address string, body []byte, userAgent string, user *X19User) (*http.Request, error) {
+func BuildX19Request(method string, address string, body []byte, userAgent string, user X19User) (*http.Request, error) {
 	req, err := http.NewRequest(method, address, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Add("User-Agent", userAgent)
-	if user != nil {
-		req.Header.Add("user-id", user.Id)
-		// TODO user-token
-		u, err := url.Parse(address)
-		if err != nil {
-			panic(err)
-		}
-		path := u.Path
-		if len(u.RawQuery) != 0 {
-			path += "?" + u.RawQuery
-		}
-		if len(u.Fragment) != 0 {
-			path += "#" + u.Fragment
-		}
-		req.Header.Add("user-token", ComputeDynamicToken(path, body, user.Token))
+
+	// netease verify
+	req.Header.Add("user-id", user.Id)
+	u, err := url.Parse(address)
+	if err != nil {
+		panic(err)
 	}
+	path := u.Path
+	if len(u.RawQuery) != 0 {
+		path += "?" + u.RawQuery
+	}
+	if len(u.Fragment) != 0 {
+		path += "#" + u.Fragment
+	}
+	req.Header.Add("user-token", ComputeDynamicToken(path, body, user.Token))
 
 	return req, nil
 }
 
 func X19SimpleRequest(method string, url string, body []byte, client *http.Client, userAgent string, user *X19User) ([]byte, error) {
-	req, err := BuildX19Request(method, url, body, userAgent, user)
+	if user != nil {
+		user = &X19User{}
+	}
+
+	req, err := BuildX19Request(method, url, body, userAgent, *user)
 	if err != nil {
 		return nil, err
 	}

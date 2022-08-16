@@ -167,3 +167,39 @@ func X19AuthenticationOTP(client *http.Client, userAgent string, sAuth MPaySAuth
 
 	return json.Unmarshal(body, &authEntity)
 }
+
+// func X19AuthenticationUpdate(client *http.Client, userAgent string, release X19ReleaseInfo, user util.X19User) error {
+// 	bodyStruct := struct {
+// 		EntityId string `json:"entity_id"`
+// 	}{
+// 		EntityId: user.Id,
+// 	}
+
+// 	postBody, err := json.Marshal(bodyStruct)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	postBody, err = util.X19HttpEncrypt(postBody)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	body, err := util.X19SimpleRequest("POST", release.CoreServerUrl+"/authentication/"+user.Id, postBody, client, userAgent, &user)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	println(len(body))
+// 	println(string(body))
+
+// 	body, err = util.X19HttpDecrypt(body)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	println(len(body))
+// 	println(body)
+
+// 	return nil
+// }

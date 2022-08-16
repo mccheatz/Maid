@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
+	"encoding/hex"
 )
 
 func ECBEncrypt(block cipher.Block, src, key []byte) ([]byte, error) {
@@ -102,4 +103,8 @@ func AES_CBC_Decrypt(key []byte, data []byte, iv []byte) ([]byte, error) {
 func MD5Sum(data []byte) []byte {
 	result := md5.Sum(data)
 	return result[:]
+}
+
+func MD5Hex(input []byte) string {
+	return hex.EncodeToString(MD5Sum(input))
 }
