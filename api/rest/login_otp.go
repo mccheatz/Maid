@@ -38,7 +38,7 @@ func X19LoginOTP(client *http.Client, sAuth MPaySAuthToken, userAgent string, re
 		return err
 	}
 
-	body, err := util.X19SimpleRequest("POST", release.CoreServerUrl+"/login-otp", sAuthJson, client, userAgent, nil)
+	body, err := util.X19SimpleRequest("POST", release.CoreServerUrl+"/login-otp", sAuthJson, client, userAgent, util.X19User{})
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func X19AuthenticationOTP(client *http.Client, userAgent string, sAuth MPaySAuth
 		return err
 	}
 
-	body, err := util.X19SimpleRequest("POST", release.CoreServerUrl+"/authentication-otp", postBody, client, userAgent, nil)
+	body, err := util.X19SimpleRequest("POST", release.CoreServerUrl+"/authentication-otp", postBody, client, userAgent, util.X19User{})
 	if err != nil {
 		return err
 	}
@@ -168,38 +168,32 @@ func X19AuthenticationOTP(client *http.Client, userAgent string, sAuth MPaySAuth
 	return json.Unmarshal(body, &authEntity)
 }
 
-// func X19AuthenticationUpdate(client *http.Client, userAgent string, release X19ReleaseInfo, user util.X19User) error {
-// 	bodyStruct := struct {
-// 		EntityId string `json:"entity_id"`
-// 	}{
-// 		EntityId: user.Id,
-// 	}
+func X19AuthenticationUpdate(client *http.Client, userAgent string, release X19ReleaseInfo, user util.X19User, authEntity *X19AuthenticationEntity) error {
+	bodyStruct := struct {
+		EntityId string `json:"entity_id"`
+	}{
+		EntityId: user.Id,
+	}
 
-// 	postBody, err := json.Marshal(bodyStruct)
-// 	if err != nil {
-// 		return err
-// 	}
+	postBody, err := json.Marshal(bodyStruct)
+	if err != nil {
+		return err
+	}
 
-// 	postBody, err = util.X19HttpEncrypt(postBody)
-// 	if err != nil {
-// 		return err
-// 	}
+	postBody, err = util.X19HttpEncrypt(postBody)
+	if err != nil {
+		return err
+	}
 
-// 	body, err := util.X19SimpleRequest("POST", release.CoreServerUrl+"/authentication/"+user.Id, postBody, client, userAgent, &user)
-// 	if err != nil {
-// 		return err
-// 	}
+	body, err := util.X19SimpleRequest("POST", release.ApiGatewayUrl+"/authentication/update", postBody, client, userAgent, user)
+	if err != nil {
+		return err
+	}
 
-// 	println(len(body))
-// 	println(string(body))
+	body, err = util.X19HttpDecrypt(body)
+	if err != nil {
+		return err
+	}
 
-// 	body, err = util.X19HttpDecrypt(body)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	println(len(body))
-// 	println(body)
-
-// 	return nil
-// }
+	return json.Unmarshal(body, &authEntity)
+}

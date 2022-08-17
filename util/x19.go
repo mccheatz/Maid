@@ -89,7 +89,7 @@ func X19HttpDecrypt(body []byte) ([]byte, error) {
 	return result[:scissorPos+1], nil
 }
 
-func ComputeDynamicToken(path string, body []byte, token string) string {
+func X19ComputeDynamicToken(path string, body []byte, token string) string {
 	var payload bytes.Buffer
 	payload.WriteString(MD5Hex([]byte(token)))
 	payload.Write(body)
@@ -163,17 +163,13 @@ func BuildX19Request(method string, address string, body []byte, userAgent strin
 	if len(u.Fragment) != 0 {
 		path += "#" + u.Fragment
 	}
-	req.Header.Add("user-token", ComputeDynamicToken(path, body, user.Token))
+	req.Header.Add("user-token", X19ComputeDynamicToken(path, body, user.Token))
 
 	return req, nil
 }
 
-func X19SimpleRequest(method string, url string, body []byte, client *http.Client, userAgent string, user *X19User) ([]byte, error) {
-	if user != nil {
-		user = &X19User{}
-	}
-
-	req, err := BuildX19Request(method, url, body, userAgent, *user)
+func X19SimpleRequest(method string, url string, body []byte, client *http.Client, userAgent string, user X19User) ([]byte, error) {
+	req, err := BuildX19Request(method, url, body, userAgent, user)
 	if err != nil {
 		return nil, err
 	}

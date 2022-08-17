@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"maid/api"
 	"maid/api/rest"
 	"maid/util"
@@ -12,12 +13,6 @@ import (
 
 func main() {
 	rand.Seed(time.Now().UnixMilli()) // reset random seed
-
-	// a := util.ComputeDynamicToken("/item-buy-list/query/search-mcgame-item-list-v2", []byte(`{"versions":["1.7.10","1.8","1.8.8","1.8.9","1.9.4","1.10.2","1.11.2","1.12.2","1.13.2","1.14.3","1.15","1.16","1.18"],"offset":0,"length":50}`), "")
-	a := util.ComputeDynamicToken("/user-detail/89602", make([]byte, 0), "y9LkDerv903ECe6M")
-	println(a)
-
-	return
 
 	proxyUrl, _ := url.Parse("http://127.0.0.1:8889")
 	client := &http.Client{
@@ -82,13 +77,81 @@ func main() {
 		panic(err)
 	}
 
-	// x19User := authEntity.ToUser()
+	println("X19 AuthToken: " + authEntity.Entity.Token)
+
+	x19User := authEntity.ToUser()
 
 	// update session every minute is required
-	// err = rest.X19AuthenticationUpdate(client, session.UserAgent, session.Release, x19User)
+	// err = rest.X19AuthenticationUpdate(client, session.UserAgent, session.Release, x19User, &authEntity)
 	// if err != nil {
 	// 	panic(err)
 	// }
 
-	println("X19 AuthToken: " + authEntity.Entity.Token)
+	// fetch server list
+	var serverItem rest.X19ItemQueryEntity
+	{
+		itemQuery := rest.X19ItemQueryInfo{
+			ItemType:     1,
+			Length:       50,
+			MasterTypeId: 2,
+		}
+		var queryResultItem []rest.X19ItemQueryEntity
+		err = rest.X19FetchAllQuery(client, session.UserAgent, x19User, session.Release, itemQuery, &queryResultItem)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("%d servers online\n", len(queryResultItem))
+
+		// find the server that I intend to join
+		for _, item := range queryResultItem {
+			if item.Name == "花雨庭" {
+				serverItem = item
+			}
+		}
+
+		if serverItem.Name == "" {
+			println("Failed to find the target server")
+			return
+		}
+		fmt.Printf("server found! (name=%s, id=%s)\n", serverItem.Name, serverItem.EntityId)
+	}
+
+	// fetch character list
+	var characters []rest.X19GameCharacterQueryEntity
+	{
+		characterQuery := rest.X19GameCharacterQueryInfo{
+			GameId:   serverItem.EntityId,
+			GameType: 2,
+			Length:   50,
+			Offset:   0,
+		}
+		var queryResultCharacter rest.X19GameCharacterQueryResult
+		err = rest.X19GameCharacters(client, session.UserAgent, x19User, session.Release, characterQuery, &queryResultCharacter)
+		if err != nil {
+			panic(err)
+		}
+		characters = append(characters, queryResultCharacter.Entities...)
+		fmt.Printf("%d character(s) found\n", len(characters))
+	}
+
+	if len(characters) == 0 {
+		println("no character found! attempt create")
+
+		characterCreateQuery := rest.X19CreateGameCharacterInfo{
+			GameId:   serverItem.EntityId,
+			GameType: 2,
+			Name:     "Taka_" + util.RandStringRunes(5),
+		}
+		var queryResultCharacter rest.X19SingleCharacterResult
+		err = rest.X19CreateGameCharacter(client, session.UserAgent, x19User, session.Release, characterCreateQuery, &queryResultCharacter)
+		if err != nil {
+			panic(err)
+		}
+		characters = append(characters, queryResultCharacter.Entity)
+	}
+
+	for _, c := range characters {
+		t := time.Unix(c.ExpireTime, 0)
+		println(c.EntityId + "\t" + c.Name + "\t" + t.Local().Format("2006-01-02 15:04:05"))
+	}
 }
