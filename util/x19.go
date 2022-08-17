@@ -152,18 +152,20 @@ func BuildX19Request(method string, address string, body []byte, userAgent strin
 
 	// netease verify
 	req.Header.Add("user-id", user.Id)
-	u, err := url.Parse(address)
-	if err != nil {
-		panic(err)
+	{
+		u, err := url.Parse(address)
+		if err != nil {
+			panic(err)
+		}
+		path := u.Path
+		if len(u.RawQuery) != 0 {
+			path += "?" + u.RawQuery
+		}
+		if len(u.Fragment) != 0 {
+			path += "#" + u.Fragment
+		}
+		req.Header.Add("user-token", X19ComputeDynamicToken(path, body, user.Token))
 	}
-	path := u.Path
-	if len(u.RawQuery) != 0 {
-		path += "?" + u.RawQuery
-	}
-	if len(u.Fragment) != 0 {
-		path += "#" + u.Fragment
-	}
-	req.Header.Add("user-token", X19ComputeDynamicToken(path, body, user.Token))
 
 	return req, nil
 }
@@ -182,4 +184,44 @@ func X19SimpleRequest(method string, url string, body []byte, client *http.Clien
 	defer resp.Body.Close()
 
 	return io.ReadAll(resp.Body)
+}
+
+func X19EncryptRequest(method string, address string, postBody []byte, client *http.Client, userAgent string, user X19User) ([]byte, error) {
+	encryptedBody, err := X19HttpEncrypt(postBody)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := BuildX19Request(method, address, encryptedBody, userAgent, user)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json; charset=utf-8")
+	{
+		u, err := url.Parse(address)
+		if err != nil {
+			panic(err)
+		}
+		path := u.Path
+		if len(u.RawQuery) != 0 {
+			path += "?" + u.RawQuery
+		}
+		if len(u.Fragment) != 0 {
+			path += "#" + u.Fragment
+		}
+		req.Header.Set("user-token", X19ComputeDynamicToken(path, postBody, user.Token))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return X19HttpDecrypt(body)
 }

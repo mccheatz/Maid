@@ -150,17 +150,7 @@ func X19AuthenticationOTP(client *http.Client, userAgent string, sAuth MPaySAuth
 		return err
 	}
 
-	postBody, err = util.X19HttpEncrypt(postBody)
-	if err != nil {
-		return err
-	}
-
-	body, err := util.X19SimpleRequest("POST", release.CoreServerUrl+"/authentication-otp", postBody, client, userAgent, util.X19User{})
-	if err != nil {
-		return err
-	}
-
-	body, err = util.X19HttpDecrypt(body)
+	body, err := util.X19EncryptRequest("POST", release.CoreServerUrl+"/authentication-otp", postBody, client, userAgent, util.X19User{})
 	if err != nil {
 		return err
 	}
@@ -180,17 +170,7 @@ func X19AuthenticationUpdate(client *http.Client, userAgent string, release X19R
 		return err
 	}
 
-	postBody, err = util.X19HttpEncrypt(postBody)
-	if err != nil {
-		return err
-	}
-
-	body, err := util.X19SimpleRequest("POST", release.ApiGatewayUrl+"/authentication/update", postBody, client, userAgent, user)
-	if err != nil {
-		return err
-	}
-
-	body, err = util.X19HttpDecrypt(body)
+	body, err := util.X19EncryptRequest("POST", release.ApiGatewayUrl+"/authentication/update", postBody, client, userAgent, user)
 	if err != nil {
 		return err
 	}
