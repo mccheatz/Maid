@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"sort"
 )
 
 func PushToParameters(instance any, query *url.Values) {
@@ -22,4 +23,10 @@ func BoolToInt(in bool) int {
 		result = 1
 	}
 	return result
+}
+
+func ReverseSlice[T comparable](s []T) {
+	sort.SliceStable(s, func(i, j int) bool {
+		return i > j
+	})
 }

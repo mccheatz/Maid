@@ -4,12 +4,17 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 )
 
 type X19AuthServer struct {
-	IP         string
-	Post       int
-	ServerType string
+	IP         string `json:"IP"`
+	Port       int    `json:"Port"`
+	ServerType string `json:"ServerType"`
+}
+
+func (server X19AuthServer) ToAddr() string {
+	return server.IP + ":" + strconv.Itoa(server.Port)
 }
 
 func X19AuthServerList(client *http.Client, release X19ReleaseInfo, authServers *[]X19AuthServer) error {

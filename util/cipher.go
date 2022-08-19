@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 )
 
 func ECBEncrypt(block cipher.Block, src, key []byte) ([]byte, error) {
@@ -107,4 +108,16 @@ func MD5Sum(data []byte) []byte {
 
 func MD5Hex(input []byte) string {
 	return hex.EncodeToString(MD5Sum(input))
+}
+
+func Xor(data []byte, key []byte) ([]byte, error) {
+	if len(data) != len(key) {
+		return nil, errors.New("data and key size do not match")
+	}
+
+	for i := 0; i < len(data); i++ {
+		data[i] ^= key[i]
+	}
+
+	return data, nil
 }
