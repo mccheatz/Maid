@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 )
@@ -29,4 +30,14 @@ func RandMacAddress() string {
 	buf[0] |= 2
 
 	return fmt.Sprintf("%02x%02x%02x%02x%02x%02x", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+}
+
+func ToBinaryString(data []byte) string {
+	var buf bytes.Buffer
+	for i := 0; i < len(data); i++ {
+		for j := 0; j < 8; j++ {
+			buf.WriteByte('0' + (data[i] >> (7 - j) & 1))
+		}
+	}
+	return buf.String()
 }

@@ -1,13 +1,15 @@
 package util
 
-import "bytes"
+import (
+	"bytes"
+	"strconv"
+	"strings"
+)
 
 type JsonNull struct{}
 
 func (c JsonNull) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	buf.WriteString(`null`)
-	return buf.Bytes(), nil
+	return []byte("null"), nil
 }
 
 func (c *JsonNull) UnmarshalJSON(in []byte) error {
@@ -19,12 +21,35 @@ type JsonRaw struct {
 }
 
 func (c JsonRaw) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	buf.WriteString(c.Value)
-	return buf.Bytes(), nil
+	return []byte(c.Value), nil
 }
 
 func (c *JsonRaw) UnmarshalJSON(in []byte) error {
 	c.Value = string(in)
+	return nil
+}
+
+type JsonIntString struct {
+	Value int
+}
+
+func (c JsonIntString) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteRune('"')
+	buf.WriteString(strconv.Itoa(c.Value))
+	buf.WriteRune('"')
+	return buf.Bytes(), nil
+}
+
+func (c *JsonIntString) UnmarshalJSON(in []byte) error {
+	str := string(in)
+	str = strings.Trim(str, "\"")
+
+	val, err := strconv.Atoi(str)
+	if err != nil {
+		return err
+	}
+	c.Value = val
+	
 	return nil
 }

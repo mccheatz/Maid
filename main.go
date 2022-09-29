@@ -8,10 +8,9 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
-
-	_ "embed"
 
 	"golang.org/x/net/proxy"
 )
@@ -19,51 +18,21 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixMilli()) // reset random seed
 
-	// sum := sha1.Sum([]byte("SaintSteve"))
-	// util.ReverseSlice(sum[:])
-	// num := new(big.Int)
-	// num.SetBytes(sum[:])
-	// println(sum[0] >> 6)
-
-	// fmt.Printf("%x\n", num)
-	// println(hex.EncodeToString(sum[:]))
-
-	// tks := []string{
-	// 	"ZgBASIZlGwBBNTZhZDQ2MDdiODExY2Q1YTVmMGM4MjlkYjY2NWQ1ZGExNTZhZDQ2MDdiODFjZDVhNWYwYzgyOWRiNjY1ZDVkYTEMMS44LjI0LjU0MTc5BjEuMTIuMrEr/mL7XHKMOtxhzPSK+8fFQ4D3j6+z/bWYsXaWluNYjzUmpAQATU9EUwIAW11BAG9sOz5ubGptOGJrazk+bztvPGo5YmhjPjhsbG8+bz47a29sOz5ubGptOGJrOT5vO288ajliaGM+OGxsbz5vPjtrB25ldGVhc2U=",
-	// 	"AASA0j73EQEoM2UxOGFlOWExYmRkYWJmMjYxNzRkODk0MWVkNjE1OWIwMTkwNTEzNgwxLjguMjQuNTQxNzkGMS4xMi4y4Qz+Yr+XJX/L1BNqUbDMnU8TZc7O9VdSKj2hzuJpEW9g72QwBABNT0RTAgBbXSgAaT9rYjs/YztrOD4+Ozg8aGxrbW4+YmNuaz8+bGtvYzhqa2Nqb2tpbAduZXRlYXNl",
-	// 	"AASA0j73EQEoM2UxOGFlOWExYmRkYWJmMjYxNzRkODk0MWVkNjE1OWIwMTkwNTEzNgwxLjguMjQuNTQxNzkGMS4xMi4y3QL+Yg4TDEu5vqYKX/Aq2XuddhAPaFzGnIjv95dLGyfuXnPzBABNT0RTAgBbXSgAaT9rYjs/YztrOD4+Ozg8aGxrbW4+YmNuaz8+bGtvYzhqa2Nqb2tpbAduZXRlYXNl",
-	// 	"AASA0j73EQEoM2UxOGFlOWExYmRkYWJmMjYxNzRkODk0MWVkNjE1OWIwMTkwNTEzNgwxLjguMjQuNTQxNzkGMS4xMi4yuAr+YqPQiI3BCrXjZS752e6BGZevcek+0qs57/E2WCVIh3H2BABNT0RTAgBbXSgAaT9rYjs/YztrOD4+Ozg8aGxrbW4+YmNuaz8+bGtvYzhqa2Nqb2tpbAduZXRlYXNl",
-	// }
-
-	// b, _ := base64.StdEncoding.DecodeString(tks[0])
-	// c, _ := base64.StdEncoding.DecodeString(tks[1])
-
-	// for i := 0; i < len(b); i++ {
-	// 	if b[i] != c[i] {
-	// 		print(i)
-	// 		print("\t")
-	// 		print(b[i])
-	// 		print("\t")
-	// 		print(c[i])
-	// 		println()
-	// 	}
-	// }
-
-	// for _, str := range tks {
-	// 	b, _ := base64.StdEncoding.DecodeString(str)
-	// 	println(string(b))
-	// }
-
 	var err error
 
 	var dial func(network, addr string) (c net.Conn, err error)
 	{
-		USE_PROXY := false
 		baseDialer := &net.Dialer{
 			Timeout: 5 * time.Second,
 		}
-		if USE_PROXY {
-			dialProxy, _ := proxy.SOCKS5("tcp", "127.0.0.1:10808", nil, baseDialer)
+		// detect system proxy settings
+		sysproxy := os.Getenv("SOCKS_PROXY")
+		if sysproxy == "" {
+			sysproxy = os.Getenv("SOCKS5_PROXY")
+		}
+		if sysproxy != "" {
+			println("Proxy detected: " + sysproxy)
+			dialProxy, _ := proxy.SOCKS5("tcp", sysproxy, nil, baseDialer)
 			dial = dialProxy.Dial
 		} else {
 			dial = baseDialer.Dial
@@ -87,8 +56,8 @@ func main() {
 	clientMPay.GeneratePC()
 	clientMPay.Udid = "o0Oooo0oO"
 	app := rest.MPayAppInfo{}
-	// app.GenerateForX19(session.LatestPatch)
-	app.GenerateForX19Mobile("840204111")
+	// app.GenerateForX19(session.LatestPatch.Version)
+	app.GenerateForX19Mobile(session.LatestPatch.Version)
 	var device rest.MPayDevice
 	err = rest.MPayDevices(client, clientMPay, app, &device)
 	if err != nil {
@@ -96,7 +65,7 @@ func main() {
 	}
 
 	var user rest.MPayUser
-	// err = rest.MPayLogin(client, device, app, c, "f1182916778@163.com", "020601", &user)
+	// err = rest.MPayLogin(client, device, app, clientMPay, "f1182916778@163.com", "020601", &user)
 	err = rest.MPayLoginGuest(client, device, app, clientMPay, &user)
 	if err != nil {
 		panic(err)
@@ -135,41 +104,37 @@ func main() {
 
 	x19User := authEntity.ToUser()
 
-	println("attempt establish connection to authenticate server...")
-	authConn := api.X19AuthServerConnection{
-		Address:   session.AuthServers[rand.Intn(len(session.AuthServers))].ToAddr(),
-		Dial:      dial,
-		UserToken: x19User.Token,
-		EntityId:  x19User.Id,
-	}
-	go func() {
-		err := authConn.Establish()
-		if err != nil {
-			panic(err)
-		}
-	}()
+	// println("attempt establish connection to authenticate server...")
+	// authConn := api.X19AuthServerConnection{
+	// 	Address:   session.AuthServers[rand.Intn(len(session.AuthServers))].ToAddr(),
+	// 	Dial:      dial,
+	// 	UserToken: x19User.Token,
+	// 	EntityId:  x19User.Id,
+	// }
+	// go func() {
+	// 	err := authConn.Establish()
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// }()
 
-	str := api.GenerateAuthenticationBody("3x18ae9a1bddabf26174d8941ed6159b01905131", "7711451783364710", "1.12.2", "1.8.24.54179", "MODS", "56ad4607b81cd5a5f0c829db665d5da1", "c4a310031cde5126bd524f8d403df764")
+	// str := api.GenerateAuthenticationBody("3x18ae9a1bddabf26174d8941ed6159b01905131", "7711451783364710", "1.12.2", "1.8.24.54179", "MODS", "56ad4607b81cd5a5f0c829db665d5da1", "c4a310031cde5126bd524f8d403df764")
 
-	for !authConn.HasEstablished() {
-		time.Sleep(1 * time.Second)
-	}
+	// for !authConn.HasEstablished() {
+	// 	time.Sleep(1 * time.Second)
+	// }
 
-	println("connected!")
-	err = authConn.SendPacket(9, str)
-	if err != nil {
-		panic(err)
-	}
-
-	select {}
-
-	return
-
-	// update session every minute is required
-	// err = rest.X19AuthenticationUpdate(client, session.UserAgent, session.Release, x19User, &authEntity)
+	// println("connected!")
+	// err = authConn.SendPacket(9, str)
 	// if err != nil {
 	// 	panic(err)
 	// }
+
+	// return
+
+	// update session every minute is required
+	updater := api.X19SessionUpdater{}
+	go updater.StartUpdating(client, session.UserAgent, session.Release, &x19User)
 
 	// fetch server list
 	var serverItem rest.X19ItemQueryEntity
@@ -209,7 +174,7 @@ func main() {
 		serverAddress = query.Entity
 	}
 
-	fmt.Printf("server found! (name=%s, id=%s, address=%s:%d)\n", serverItem.Name, serverItem.EntityId, serverAddress.Ip, serverAddress.Port)
+	fmt.Printf("server found! (name=%s, id=%s, address=%s)\n", serverItem.Name, serverItem.EntityId, serverAddress.Address())
 
 	// fetch character list
 	var characters []rest.X19GameCharacterQueryEntity
@@ -255,6 +220,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	return
 
 	// download game
 	{

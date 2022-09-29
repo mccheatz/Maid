@@ -91,7 +91,7 @@ func (mp *MPayAppInfo) GenerateForX19(version string) {
 func (mp *MPayAppInfo) GenerateForX19Mobile(version string) {
 	mp.AppMode = "2"
 	mp.AppType = "games"
-	mp.ClientVersion = "a3.32.1"
+	mp.ClientVersion = "a3.4.1"
 	mp.GameId = "aecfrxodyqaaaajp-g-x19"
 	mp.GameVersion = version
 	mp.MCountAppKey = "EEkEEXLymcNjM42yLY3Bn6AO15aGy4yq"

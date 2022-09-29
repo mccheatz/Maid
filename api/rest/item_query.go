@@ -3,9 +3,9 @@ package rest
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maid/util"
 	"net/http"
-	"strconv"
 )
 
 type X19ItemQueryInfo struct {
@@ -52,7 +52,7 @@ type X19ItemQueryResult struct {
 	Details  string               `json:"details"`
 	Entities []X19ItemQueryEntity `json:"entities"`
 	Message  string               `json:"message"`
-	Total    string               `json:"total"`
+	Total    util.JsonIntString   `json:"total"`
 }
 type X19ItemVersionQueryInfo struct {
 	ItemId string `json:"item_id"`
@@ -130,6 +130,10 @@ type X19ItemAddressQueryEntity struct {
 	Port         int    `json:"port"`
 }
 
+func (e X19ItemAddressQueryEntity) Address() string {
+	return fmt.Sprintf("%s:%d", e.Ip, e.Port)
+}
+
 type X19ItemAddressQueryResult struct {
 	Code    int                       `json:"code"`
 	Details string                    `json:"details"`
@@ -167,11 +171,7 @@ func X19FetchAllQuery(client *http.Client, userAgent string, user util.X19User, 
 		*entities = append(*entities, result.Entities...)
 
 		current += query.Length
-		max, err := strconv.Atoi(result.Total)
-		if err != nil {
-			return err
-		}
-		if current >= max {
+		if current >= result.Total.Value {
 			break
 		}
 	}

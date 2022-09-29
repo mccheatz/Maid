@@ -2,6 +2,7 @@ package rest
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maid/util"
 	"math/rand"
@@ -158,7 +159,26 @@ func X19AuthenticationOTP(client *http.Client, userAgent string, sAuth MPaySAuth
 	return json.Unmarshal(body, &authEntity)
 }
 
-func X19AuthenticationUpdate(client *http.Client, userAgent string, release X19ReleaseInfo, user util.X19User, authEntity *X19AuthenticationEntity) error {
+type X19AuthenticationUpdateEntity struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Details string `json:"details"`
+	Entity  struct {
+		EntityId        string `json:"entity_id"`
+		Token           string `json:"token"`
+		VerifyStatus    int    `json:"verify_status"`
+		LastServerUpTime int    `json:"last_server_up_time"`
+	} `json:"entity"`
+}
+
+func (au X19AuthenticationUpdateEntity) ApplyToX19User(user *util.X19User) {
+	if user.Id != au.Entity.EntityId {
+		panic("user entityid mismatch")
+	}
+	user.Token = au.Entity.Token
+}
+
+func X19AuthenticationUpdate(client *http.Client, userAgent string, release X19ReleaseInfo, user util.X19User, authEntity *X19AuthenticationUpdateEntity) error {
 	bodyStruct := struct {
 		EntityId string `json:"entity_id"`
 	}{
@@ -176,4 +196,18 @@ func X19AuthenticationUpdate(client *http.Client, userAgent string, release X19R
 	}
 
 	return json.Unmarshal(body, &authEntity)
+}
+
+func X19DoAuthenticationUpdate(client *http.Client, userAgent string, release X19ReleaseInfo, user *util.X19User) error {
+	entity := X19AuthenticationUpdateEntity{}
+	
+	err := X19AuthenticationUpdate(client, userAgent, release, *user, &entity)
+	if err != nil {
+		return err
+	} else if entity.Message != "\u6b63\u5e38\u8fd4\u56de" {
+		return errors.New("bad response status: " + entity.Message)
+	}
+	entity.ApplyToX19User(user)
+
+	return nil
 }
