@@ -87,8 +87,6 @@ func X19CreateGameCharacter(client *http.Client, userAgent string, user util.X19
 		return err
 	}
 
-	println(string(body))
-
 	return json.Unmarshal(body, &result)
 }
 
