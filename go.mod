@@ -5,9 +5,9 @@ go 1.18
 require (
 	github.com/Tnze/go-mc v1.18.2
 	github.com/bodgit/sevenzip v1.3.0
+	github.com/chocolatkey/chacha8 v0.0.0-20200308092524-06a0ce7f6716
 	github.com/google/uuid v1.3.0
 	github.com/jmhobbs/skip32 v1.1.0
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20220812174116-3211cb980234
 )
 

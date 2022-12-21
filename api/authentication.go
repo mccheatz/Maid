@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/chocolatkey/chacha8"
 	"github.com/jmhobbs/skip32"
-	"golang.org/x/crypto/chacha20"
 )
 
 type X19AuthServerConnection struct {
@@ -22,7 +22,7 @@ type X19AuthServerConnection struct {
 	Dial          func(network, addr string) (net.Conn, error)
 	connection    net.Conn
 	established   bool
-	encryptCipher *chacha20.Cipher
+	encryptCipher *chacha8.Cipher
 	crc32Table    *crc32.Table
 
 	// authentication
@@ -103,11 +103,11 @@ func (c *X19AuthServerConnection) Establish() error {
 
 	c.crc32Table = crc32.MakeTable(crc32.IEEE)
 	cipherNonce := []byte{0x31, 0x36, 0x33, 0x20, 0x4e, 0x65, 0x74, 0x45, 0x61, 0x73, 0x65, 0x0a}
-	c.encryptCipher, err = chacha20.NewUnauthenticatedCipher(append(localKey, remoteKey...), cipherNonce)
+	c.encryptCipher, err = chacha8.New(append(localKey, remoteKey...), cipherNonce)
 	if err != nil {
 		return err
 	}
-	decryptCipher, err := chacha20.NewUnauthenticatedCipher(append(remoteKey, localKey...), cipherNonce)
+	decryptCipher, err := chacha8.New(append(remoteKey, localKey...), cipherNonce)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (c *X19AuthServerConnection) Establish() error {
 		for c.established {
 			// keep alive
 			time.Sleep(30 * time.Second)
-			c.SendPacket(0, []byte("iamwpf"))
+			c.connection.Write([]byte{0x00})
 		}
 	}()
 
@@ -191,7 +191,9 @@ func (c *X19AuthServerConnection) SendPacket(id byte, data []byte) error {
 		body[i] = checksum[i]
 	}
 	c.encryptCipher.XORKeyStream(body, body)
-	c.connection.Write(make([]byte, 2))
+	packetSize := make([]byte, 2)
+	binary.LittleEndian.PutUint16(packetSize, uint16(len(body)))
+	c.connection.Write(packetSize)
 	c.connection.Write(body)
 
 	return nil
