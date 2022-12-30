@@ -24,6 +24,7 @@ type X19AuthServerConnection struct {
 	established   bool
 	encryptCipher *chacha8.Cipher
 	crc32Table    *crc32.Table
+	awaitPacket   bool
 
 	// authentication
 	UserToken string
@@ -114,20 +115,19 @@ func (c *X19AuthServerConnection) Establish() error {
 
 	c.established = true
 
-	go func() {
-		for c.established {
-			// keep alive
-			time.Sleep(30 * time.Second)
-			c.connection.Write([]byte{0x00})
-		}
-	}()
+	// go func() {
+	// 	for c.established {
+	// 		// keep alive
+	// 		time.Sleep(30 * time.Second)
+	// 		c.connection.Write([]byte{0x00})
+	// 	}
+	// }()
 
 	for {
 		body, err := c.readVariantBytes()
 		if err != nil {
 			return err
 		}
-		println(len(body))
 		if len(body) < 4 {
 			continue
 		}
@@ -142,10 +142,20 @@ func (c *X19AuthServerConnection) Establish() error {
 			}
 		}
 
+		c.awaitPacket = false
+
 		packetId := decryptedBody[4]
 		decryptedBody = decryptedBody[8:]
 
-		fmt.Printf("%d %s", packetId, hex.EncodeToString(decryptedBody))
+		fmt.Printf("%d %s\n", packetId, string(decryptedBody))
+	}
+}
+
+func (c *X19AuthServerConnection) WaitPacket() {
+	c.awaitPacket = true
+
+	for c.awaitPacket {
+		time.Sleep(50 * time.Millisecond)
 	}
 }
 
@@ -160,8 +170,6 @@ func (c *X19AuthServerConnection) readVariantBytes() ([]byte, error) {
 		return nil, err
 	}
 	size = binary.LittleEndian.Uint16(buf)
-
-	fmt.Printf("size: %d\n", size)
 
 	buf = make([]byte, size)
 	_, err = c.connection.Read(buf)
@@ -185,15 +193,13 @@ func (c *X19AuthServerConnection) SendPacket(id byte, data []byte) error {
 		body[i+8] = data[i]
 	}
 
-	checksum := make([]byte, 4)
-	binary.LittleEndian.PutUint32(checksum, crc32.Checksum(body[4:], c.crc32Table))
-	for i := 0; i < 4; i++ {
-		body[i] = checksum[i]
-	}
+	binary.LittleEndian.PutUint32(body, crc32.Checksum(body[4:], c.crc32Table))
 	c.encryptCipher.XORKeyStream(body, body)
-	packetSize := make([]byte, 2)
-	binary.LittleEndian.PutUint16(packetSize, uint16(len(body)))
-	c.connection.Write(packetSize)
+
+	// write body size first
+	bodySize := make([]byte, 2)
+	binary.LittleEndian.PutUint16(bodySize, uint16(len(body)))
+	c.connection.Write(bodySize)
 	c.connection.Write(body)
 
 	return nil
@@ -205,34 +211,11 @@ func i32tob(val uint32, arr *[]byte, offset uint32) {
 	}
 }
 
-func GenerateAuthenticationBody(encryptHash, entityId, version, launcherVersion, mods, launchWrapperMD5, gameDataMD5 string) []byte {
-	body := make([]byte, 0)
-
-	entityIdInt, _ := strconv.ParseUint(entityId, 10, 64)
-	entityIdByte := make([]byte, 8)
-	binary.LittleEndian.PutUint64(entityIdByte, entityIdInt)
-	body = append(body, entityIdByte[:6]...) // TODO: entity id sum
-	body = append(body, 0x00, byte(len(encryptHash)))
-	body = append(body, []byte(encryptHash)...)
-	body = append(body, byte(len(launcherVersion)))
-	body = append(body, []byte(launcherVersion)...)
-	body = append(body, byte(len(version)))
-	body = append(body, []byte(version)...)
-	body = append(body, make([]byte, 20)...) // TODO: md5
-
-	b := make([]byte, 2)
-	binary.LittleEndian.PutUint16(b, uint16(len(mods)))
-	body = append(body, b...)
-	body = append(body, []byte(mods)...)
-
-	body = append(body, 0x02, 0x00, '[', ']')
-	body = append(body, byte(len(encryptHash)), 0x00)
-	xorHash := make([]byte, len(encryptHash))
-	for i := 0; i < len(encryptHash); i++ {
-		xorHash[i] = encryptHash[i] ^ 0x5a
-	}
-	body = append(body, xorHash...)
-	body = append(body, 0x07, 'n', 'e', 't', 'e', 'a', 's', 'e')
-
-	return body
+func GenerateAuthenticationBody(serverId, entityId, version, launcherVersion, mods, launchWrapperMD5, gameDataMD5 string) []byte {
+	/*
+		DISCLAIMER
+		This part of the code has been removed due to copyright restrictions.
+		This website, its owner, and anyone associated with it do not assume any responsibility or liability for any damages that may occur as a result of using this code or relying on the information provided by it.
+	*/
+	return []byte{}
 }

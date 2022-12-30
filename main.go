@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"maid/api"
 	"maid/api/rest"
@@ -8,15 +9,28 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
-	"golang.org/x/net/proxy"
+	mcproxy "maid/proxy"
 )
 
 func main() {
 	rand.Seed(time.Now().UnixMilli()) // reset random seed
+
+	var (
+		udid        = flag.String("udid", util.RandStringRunes(10), "unique device id")
+		server      = flag.String("server", "DoMCer-幸运方块起床战争-自定义家园世界-超级战墙-小游戏", "server that intend to join")
+		citizenName = flag.String("citizen-name", "", "citizen name")
+		citizenId   = flag.String("citizen-id", "", "citizen id")
+		help        = flag.Bool("help", false, "print help message")
+		// noProxy     = flag.Bool("no-proxy", false, "disable proxy settings")
+	)
+	flag.Parse()
+	if *help {
+		flag.PrintDefaults()
+		return
+	}
 
 	var err error
 
@@ -25,22 +39,24 @@ func main() {
 		baseDialer := &net.Dialer{
 			Timeout: 5 * time.Second,
 		}
-		// detect system proxy settings
-		sysproxy := os.Getenv("SOCKS_PROXY")
-		if sysproxy == "" {
-			sysproxy = os.Getenv("SOCKS5_PROXY")
-		}
-		if sysproxy != "" {
-			println("Proxy detected: " + sysproxy)
-			dialProxy, _ := proxy.SOCKS5("tcp", sysproxy, nil, baseDialer)
-			dial = dialProxy.Dial
-		} else {
-			dial = baseDialer.Dial
-		}
+		// 	// detect system proxy settings
+		// 	sysproxy := os.Getenv("SOCKS_PROXY")
+		// 	if sysproxy == "" {
+		// 		sysproxy = os.Getenv("SOCKS5_PROXY")
+		// 	}
+		// 	if sysproxy != "" && !*noProxy {
+		// 		println("Proxy detected: " + sysproxy)
+		// 		dialProxy, _ := proxy.SOCKS5("tcp", sysproxy, nil, baseDialer)
+		// 		dial = dialProxy.Dial
+		// 	} else {
+		dial = baseDialer.Dial
+		// 	}
 	}
 	client := &http.Client{
-		Transport: &http.Transport{Dial: dial},
-		Timeout:   5 * time.Second,
+		Transport: &http.Transport{
+			Dial:              dial,
+			ForceAttemptHTTP2: true,
+		},
 	}
 
 	session, err := api.EstablishSession(client)
@@ -54,7 +70,7 @@ func main() {
 
 	clientMPay := rest.MPayClientInfo{}
 	clientMPay.GeneratePC()
-	clientMPay.Udid = "o0Oooo0oO"
+	clientMPay.Udid = *udid
 	app := rest.MPayAppInfo{}
 	// app.GenerateForX19(session.LatestPatch.Version)
 	app.GenerateForX19Mobile(session.LatestPatch.Version)
@@ -76,7 +92,7 @@ func main() {
 	if user.RealNameStatus == 0 { // not real-name verified
 		println("attempt real-name verify...")
 		var result rest.MPayRealNameResult
-		err = rest.MPayRealNameUpdate(client, device, app, user, "姓名", "86", "362321195502064333", &result)
+		err = rest.MPayRealNameUpdate(client, device, app, user, *citizenName, "86", *citizenId, &result)
 		if err != nil {
 			panic(err)
 		}
@@ -104,37 +120,31 @@ func main() {
 
 	x19User := authEntity.ToUser()
 
-	// println("attempt establish connection to authenticate server...")
-	// authConn := api.X19AuthServerConnection{
-	// 	Address:   session.AuthServers[rand.Intn(len(session.AuthServers))].ToAddr(),
-	// 	Dial:      dial,
-	// 	UserToken: x19User.Token,
-	// 	EntityId:  x19User.Id,
-	// }
-	// go func() {
-	// 	err := authConn.Establish()
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }()
-
-	// str := api.GenerateAuthenticationBody("3x18ae9a1bddabf26174d8941ed6159b01905131", "7711451783364710", "1.12.2", "1.8.24.54179", "MODS", "56ad4607b81cd5a5f0c829db665d5da1", "c4a310031cde5126bd524f8d403df764")
-
-	// for !authConn.HasEstablished() {
-	// 	time.Sleep(1 * time.Second)
-	// }
-
-	// println("connected!")
-	// err = authConn.SendPacket(9, str)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// return
-
 	// update session every minute is required
 	updater := api.X19SessionUpdater{}
 	go updater.StartUpdating(client, session.UserAgent, session.Release, &x19User)
+
+	// fetch and create profile if not exists
+	var profile rest.LauncherPersonInfo
+	err = rest.FetchLauncherPersonInfo(client, session.UserAgent, x19User, session.Release, &profile)
+	if err != nil {
+		panic(err)
+	}
+
+	if profile.Entity.Nickname == "" {
+		var result rest.LauncherSetNicknameResponse
+		err = rest.LauncherSetNickname(client, session.UserAgent, x19User, session.Release, rest.LauncherSetNicknameRequest{
+			Name:     util.RandChinese(8),
+			EntityId: profile.Entity.EntityId,
+		}, &result)
+		if err != nil {
+			panic(err)
+		}
+
+		println("Set nickname: " + result.Entity.Name)
+	} else {
+		println("Welcome! " + profile.Entity.Nickname)
+	}
 
 	// fetch server list
 	var serverItem rest.X19ItemQueryEntity
@@ -153,13 +163,18 @@ func main() {
 
 		// find the server that I intend to join
 		for _, item := range queryResultItem {
-			if item.Name == "花雨庭" {
+			if item.Name == *server {
+				// if item.Name == "花雨庭" {
 				serverItem = item
 			}
 		}
 
 		if serverItem.Name == "" {
-			println("Failed to find the target server")
+			items := make([]string, len(queryResultItem))
+			for i, item := range queryResultItem {
+				items[i] = item.Name
+			}
+			println("Failed to find the target server, [", strings.Join(items, ","), "]")
 			return
 		}
 	}
@@ -194,13 +209,11 @@ func main() {
 		fmt.Printf("%d character(s) found\n", len(characters))
 	}
 
-	if len(characters) == 0 {
-		println("no character found! attempt create")
-
+	for len(characters) < 3 {
 		characterCreateQuery := rest.X19CreateGameCharacterInfo{
 			GameId:   serverItem.EntityId,
 			GameType: 2,
-			Name:     "Taka_" + util.RandStringRunes(5),
+			Name:     "PFix" + util.RandChinese(4),
 		}
 		var queryResultCharacter rest.X19SingleCharacterResult
 		err = rest.X19CreateGameCharacter(client, session.UserAgent, x19User, session.Release, characterCreateQuery, &queryResultCharacter)
@@ -221,8 +234,6 @@ func main() {
 		panic(err)
 	}
 
-	return
-
 	// download game
 	{
 		// downloads := make([]util.DownloadInfo, 0)
@@ -238,42 +249,33 @@ func main() {
 			return
 		}
 
-		mods, err := rest.FetchGameResourcesVerifyList(client, itemResult.Entity.SubEntities)
+		query := rest.X19AuthItemQuery{
+			GameType:    2,
+			McVersionId: versionInfo.GetMcVersionCode(),
+		}
+		var authItemResult rest.X19AuthItemResult
+		err = rest.X19AuthItemSearch(client, session.UserAgent, x19User, session.Release, query, &authItemResult)
 		if err != nil {
 			panic(err)
 		}
 
-		println(mods)
+		itemIds := make([]string, len(authItemResult.Entity.IIdList))
+		for i, item := range authItemResult.Entity.IIdList {
+			itemIds[i] = item.Value
+		}
 
-		// for _, sub := range itemResult.Entity.SubEntities {
-		// 	downloads = append(downloads, util.DownloadInfo{
-		// 		Path: "./dl/" + sub.ResourceName,
-		// 		Url:  sub.ResourceUrl,
-		// 	})
-		// }
+		var itemListResult rest.X19UserItemListResult
+		err = rest.X19UserItemListDownload(client, session.UserAgent, x19User, session.Release, itemIds, &itemListResult)
+		if err != nil {
+			panic(err)
+		}
 
-		/*
-			query := rest.X19AuthItemQuery{
-				GameType:    2,
-				McVersionId: versionInfo.GetMcVersionCode(),
-			}
-			var authItemResult rest.X19AuthItemResult
-			err = rest.X19AuthItemSearch(client, session.UserAgent, x19User, session.Release, query, &authItemResult)
-			if err != nil {
-				panic(err)
-			}
+		mods, err := rest.FetchGameResourcesVerifyList(client, itemResult.Entity.SubEntities, itemListResult.Entities)
+		if err != nil {
+			panic(err)
+		}
 
-			itemIds := make([]string, len(authItemResult.Entity.IIdList))
-			for i, item := range authItemResult.Entity.IIdList {
-				itemIds[i] = item.Value
-			}
-
-			var itemListResult rest.X19UserItemListResult
-			err = rest.X19UserItemListDownload(client, session.UserAgent, x19User, session.Release, itemIds, &itemListResult)
-			if err != nil {
-				panic(err)
-			}
-		*/
+		// println(mods)
 
 		// for _, item := range itemListResult.Entities {
 		// 	for _, sub := range item.SubEntities {
@@ -301,9 +303,9 @@ func main() {
 		var gameDataMD5 string
 		for _, key := range searchKeysResult.Entities {
 			if strings.HasSuffix(key.Name, ".dat") {
-				gameDataMD5 = key.MD5
+				gameDataMD5 = strings.ToUpper(key.MD5)
 			} else if strings.Contains(key.Name, "launchwrapper") {
-				launchWrapperMD5 = key.MD5
+				launchWrapperMD5 = strings.ToUpper(key.MD5)
 			}
 		}
 
@@ -312,9 +314,74 @@ func main() {
 			return
 		}
 
-		println(launchWrapperMD5)
-		println(gameDataMD5)
-		println(session.LatestPatch.Version)
+		// println(versionInfo.GetMcVersionName())
+		// println(launchWrapperMD5)
+		// println(gameDataMD5)
+		// println(session.LatestPatch.Version)
+
+		server := mcproxy.MinecraftProxyServer{
+			Listen: "127.0.0.1:25565",
+			Remote: serverAddress.Ip,
+			MOTD:   serverItem.Name + "\n" + serverAddress.Ip,
+			HandleEncryption: func(serverId string) error {
+				println("HandleEncryption")
+				str := api.GenerateAuthenticationBody(serverId, serverItem.EntityId, versionInfo.GetMcVersionName(), session.LatestPatch.Version, mods, launchWrapperMD5, gameDataMD5)
+
+				println("attempt establish connection to authenticate server...")
+				authConn := api.X19AuthServerConnection{
+					Address:   session.AuthServers[rand.Intn(len(session.AuthServers))].ToAddr(),
+					Dial:      dial,
+					UserToken: x19User.Token,
+					EntityId:  x19User.Id,
+				}
+				go func() {
+					err := authConn.Establish()
+					if err != nil {
+						// panic(err)
+						println(err)
+					}
+				}()
+				for !authConn.HasEstablished() {
+					time.Sleep(50 * time.Millisecond)
+				}
+
+				err = authConn.SendPacket(9, str)
+				if err != nil {
+					panic(err)
+				}
+				authConn.WaitPacket()
+
+				go func() {
+					time.Sleep(5 * time.Second)
+					println("closing connection between authenticate server")
+					authConn.Disconnect()
+				}()
+				return nil
+			},
+			HandleLogin: func(packet *mcproxy.PacketLoginStart) {
+				packet.Name = characters[0].Name
+			},
+		}
+		println("proxy server started")
+		server.StartServer()
+
+		// yggdrasilServer := yggdrasil.YggdrasilServer{
+		// 	Address: ":4000",
+		// 	HandlerJoinServer: func(request yggdrasil.YggdrasilJoinServerRequest) {
+		// 		str := api.GenerateAuthenticationBody(request.ServerId, serverItem.EntityId, versionInfo.GetMcVersionName(), session.LatestPatch.Version, mods, launchWrapperMD5, gameDataMD5)
+
+		// 		for !authConn.HasEstablished() {
+		// 			time.Sleep(1 * time.Second)
+		// 		}
+
+		// 		err = authConn.SendPacket(9, str)
+		// 		if err != nil {
+		// 			panic(err)
+		// 		}
+		// 		time.Sleep(1 * time.Second)
+		// 	},
+		// }
+		// yggdrasilServer.StartServer()
 
 		// now := time.Now()
 		// println("Downloading...")

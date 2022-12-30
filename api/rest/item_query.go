@@ -112,6 +112,51 @@ func (entity X19ItemVersionQueryEntity) GetMcVersionCode() int {
 	return result
 }
 
+func (entity X19ItemVersionQueryEntity) GetMcVersionName() string {
+	var result string
+	switch entity.MCVersionId {
+	case "1":
+		result = "1.7.10"
+	case "2":
+		result = "1.8"
+	case "3":
+		result = "1.9.4"
+	case "5":
+		result = "1.11.2"
+	case "6":
+		result = "1.8.8"
+	case "7":
+		result = "1.10.2"
+	case "8":
+		result = "1.6.4"
+	case "9":
+		result = "1.7.2"
+	case "10":
+		result = "1.12.2"
+	// case "11": result = 0
+	case "12":
+		result = "1.8.9"
+	case "13":
+		result = "100.0.0"
+	case "14":
+		result = "1.13.2"
+	case "15":
+		result = "1.14.3"
+	case "16":
+		result = "1.15"
+	case "17":
+		result = "1.16"
+	case "18":
+		result = "200.0.0"
+	case "19":
+		result = "1.18"
+	default:
+		result = "ALL"
+	}
+
+	return result
+}
+
 type X19ItemVersionQueryResult struct {
 	Code     int                         `json:"code"`
 	Details  string                      `json:"details"`

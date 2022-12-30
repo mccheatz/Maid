@@ -189,7 +189,7 @@ func X19AuthenticationUpdate(client *http.Client, userAgent string, release X19R
 		return err
 	}
 
-	body, err := util.X19EncryptRequest("POST", release.ApiGatewayUrl+"/authentication/update", postBody, client, userAgent, user)
+	body, err := util.X19EncryptRequest("POST", release.CoreServerUrl+"/authentication/update", postBody, client, userAgent, user)
 	if err != nil {
 		return err
 	}

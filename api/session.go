@@ -4,8 +4,8 @@ import (
 	"errors"
 	"maid/api/rest"
 	"net/http"
-	"strconv"
-	"strings"
+
+	"golang.org/x/mod/semver"
 )
 
 type X19Session struct {
@@ -29,29 +29,16 @@ func (s *X19Session) CheckSessionAbility() error {
 }
 
 func (s *X19Session) UpdateLatestPatch() {
-	ver := -1
-	latest := s.PatchList[0]
+	versionList := make([]string, len(s.PatchList))
 
-	for _, patch := range s.PatchList {
-		info := strings.Split(patch.Name, ".")
-		versionSeq := 0
-		i, _ := strconv.Atoi(info[0])
-		versionSeq += i << 24
-		i, _ = strconv.Atoi(info[1])
-		versionSeq += i << 20
-		i, _ = strconv.Atoi(info[2])
-		versionSeq += i << 16
-		i, _ = strconv.Atoi(info[3])
-		versionSeq += i
-
-		if versionSeq > ver {
-			latest = patch
-			ver = versionSeq
-		}
+	for i, patch := range s.PatchList {
+		versionList[i] = patch.Name
 	}
 
+	semver.Sort(versionList)
+
 	s.LatestPatch = rest.X19Version{
-		Version: latest.Name,
+		Version: versionList[len(versionList)-1],
 	}
 	s.UserAgent = "WPFLauncher/" + s.LatestPatch.Version
 }

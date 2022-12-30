@@ -15,7 +15,15 @@ func RandStringRunes(n int, runes_optional ...[]rune) string {
 	}
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(runes))]
+		b[i] = runes[rand.Intn(len(runes))]
+	}
+	return string(b)
+}
+
+func RandChinese(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = rune(rand.Intn(0x9eff-0x4e00) + 0x4e00)
 	}
 	return string(b)
 }

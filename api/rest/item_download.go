@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"maid/util"
 	"net/http"
@@ -173,7 +174,7 @@ type gameResourceVerify struct {
 	MD5     string `json:"md5"`
 }
 
-func FetchGameResourcesVerifyList(client *http.Client, entities []X19UserItemSubEntity) (string, error) {
+func FetchGameResourcesVerifyList(client *http.Client, entities []X19UserItemSubEntity, items []X19UserItemEntity) (string, error) {
 	checksum := ""
 	for _, item := range entities {
 		checksum += item.McVersionName + "-" + item.ResourceMD5 + ";"
@@ -195,6 +196,18 @@ func FetchGameResourcesVerifyList(client *http.Client, entities []X19UserItemSub
 			err := fetchGameResourcesVerify(client, item, &entry)
 			if err != nil {
 				return "", err
+			}
+		}
+
+		for _, item := range items {
+			for _, sub := range item.SubEntities {
+				fileName := fmt.Sprintf("%s@%d@%d.jar", item.ItemId, item.MTypeId, item.STypeId)
+				entry = append(entry, gameResourceVerify{
+					ModPath: fileName,
+					Id:      fileName,
+					ItemID:  item.ItemId,
+					MD5:     strings.ToUpper(sub.JarMD5),
+				})
 			}
 		}
 
